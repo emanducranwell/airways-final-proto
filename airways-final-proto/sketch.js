@@ -252,7 +252,7 @@ function drawVisualization() {
     }
 
     for (var i = 0; i < openSetGreen.length; i++) {
-        openSetGreen[i].show(color(202,219,53));
+        openSetGreen[i].show(color(255, 0, 255));
     }
 
     // Draw final paths with bold colors
