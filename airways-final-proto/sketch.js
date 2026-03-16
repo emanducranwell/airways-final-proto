@@ -12,6 +12,26 @@
 
 //working
 
+let data;
+let pmVal;
+
+let xLng;
+let yLat;
+
+
+let x = [];
+let y =[];
+let pm =[];
+
+let numRows;
+
+let londonMinX = 525200;
+let londonMaxX = 533200;
+let londonMinY = 176000;
+let londonMaxY = 180500;
+
+//coordinates to access
+
 var cols = 400;
 var rows = 300;
 var gridEfficient = new Array(cols);
@@ -38,6 +58,9 @@ var col;
 var col1; //colour
 var mapImg;
 
+const canvasWidth = 1536;
+const canvasHeight = 1024;
+
 let grey = [207, 216, 221];
 let green = [191, 231, 209];
 let blue = [158, 214, 233];
@@ -47,19 +70,34 @@ let darkGrey = [151,168,181];
 // let greenSpaceCheckBox;
 // let greenSpacePos;
 
+
 async function setup() {
 
     // greenSpaceCheckBox = select('.switch input');
     // greenSpacePos = select('.switch');
     // greenSpacePos.position(2000, 2380);
 
+    data = await loadTable("airQualTest.csv", ",", "header");
+    console.log("data loaded", data.getRowCount(), data.getColumnCount());
+
+    // mapImg = await loadImage('largeMap.png');
     mapImg = await loadImage('largeMap.png');
+    console.log("map loaded", mapImg.width, mapImg.height);
+
+    numRows = data.getRowCount();
     //slightly edited screenshot to make sure all roads show
 
-    createCanvas(mapImg.width, mapImg.height);
+    pmVal = data.getColumn('pmVal');
+    xLng = data.getColumn('x');
+    yLat = data.getColumn('y');
+
+    console.log("map", canvasWidth, canvasHeight);
+
+    createCanvas(canvasWidth, canvasHeight);
     //must happen after the image is loaded
 
-    image(mapImg, 0, 0);
+    // image(mapImg, 0, 0, 1536, 1024);
+    image(mapImg, 0, 0, canvasWidth, canvasHeight, 0, 0, canvasWidth, canvasHeight, CONTAIN);
     //can only place image down AFTER making canvas
 
     loadPixels();
@@ -72,6 +110,23 @@ async function setup() {
     //making the 2d array (grid)
 
     // Initialize both grids
+
+    for (let i = 0; i < numRows; i++) {
+
+        let xVal = int(xLng[i]);
+        let yVal = int(yLat[i]);
+        let pmValNo = Number(pmVal[i]);
+        //turns from string to number
+      
+      if (xVal > londonMinX && xVal < londonMaxX &&
+            yVal > londonMinY && yVal < londonMaxY) {
+      
+            x.push(map(xVal, londonMinX, londonMaxX, 0, width));
+            y.push(map(yVal, londonMinY, londonMaxY, height, 0));
+            pm.push(pmValNo);
+        }
+    }
+
     for (var i = 0; i < cols; i++) {
         gridEfficient[i] = new Array(rows);
         gridGreen[i] = new Array(rows);
@@ -156,6 +211,23 @@ function draw() {
     drawVisualization();
     //start & end placement math
     console.log(mouseX/w, mouseY/h);
+
+
+    for(let i=0; i< x.length; i++){
+        // console.log(pm);
+     
+       
+        // pmCol = map(pm[i], 0, 15, 0, 1);
+        // pmCol = constrain(pmCol, 0, 1);
+        // let c = lerpColor(good, bad, pmCol);
+        noFill();
+        
+        
+
+        square(x[i], y[i], 8);
+        // console.log('x', x[i],'y', y[i],'pm', pm[i]);
+        
+    }
 }
 
 function runAStarStep(openSet, closedSet, grid, end, isGreen) {
@@ -252,13 +324,13 @@ function drawVisualization() {
     }
 
     for (var i = 0; i < openSetGreen.length; i++) {
-        openSetGreen[i].show(color(202,219,53));
+        openSetGreen[i].show(color(255, 0, 255));
     }
 
     // Draw final paths with bold colors
     strokeWeight(3);
     for (var i = 0; i < pathEfficient.length; i++) {
-        pathEfficient[i].show(color('magenta')); // Blue for efficient
+        pathEfficient[i].show(color(0,0,255)); // Blue for efficient
     }
 
     for (var i = 0; i < pathGreen.length; i++) {
