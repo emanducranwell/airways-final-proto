@@ -1,31 +1,36 @@
 //adding checkbox
 ////https://getcssscan.com/css-checkboxes-examples
 
-
-
 //WORKS
 //home to newcross station
 //uses mouseX and mouseY to work out col and row of end and start pos
-
-
 
 //A* Pathfinding test
 //using map of deptford
 //using pixelation
 //adding labels
 
-
 //working
 
 var cols = 200;
 var rows = 100;
-var grid = new Array(cols);
+var gridEfficient = new Array(cols);
+var gridGreen = new Array(cols);
 
-var openSet = [];
-var closedSet = [];
+// Efficient route (standard A*)
+var openSetEfficient = [];
+var closedSetEfficient = [];
+var pathEfficient = [];
+var solvedEfficient = false;
+
+// Green-space prioritized route
+var openSetGreen = [];
+var closedSetGreen = [];
+var pathGreen = [];
+var solvedGreen = false;
+
 var start;
 var end;
-var path = [];
 var noSolution = false;
 
 var w, h;
@@ -37,17 +42,14 @@ let grey = [206, 216, 227];
 let green = [194, 240, 212];
 //the colours that google maps uses
 
-let greenSpaceCheckBox;
-let greenSpacePos;
+// let greenSpaceCheckBox;
+// let greenSpacePos;
 
 async function setup() {
 
-    // greenSpaceCheckBox = createCheckbox('Green Space');
-
-    // console.log('A*');
-    greenSpaceCheckBox = select('.switch input');
-    greenSpacePos = select('.switch');
-    greenSpacePos.position(2000, 2380);
+    // greenSpaceCheckBox = select('.switch input');
+    // greenSpacePos = select('.switch');
+    // greenSpacePos.position(2000, 2380);
 
     mapImg = await loadImage('homeNewCross2.png');
     //slightly edited screenshot to make sure all roads show
@@ -55,158 +57,156 @@ async function setup() {
     createCanvas(mapImg.width, mapImg.height);
     //must happen after the image is loaded
 
-    // pixelDensity(1);
     image(mapImg, 0, 0);
     //can only place image down AFTER making canvas
 
     loadPixels();
     //allows you to access pixel info
 
-    //deifnidng with & height of colums so that it adjust to the width & height of the canvas!
+    //defining width & height of columns so that it adjust to the width & height of the canvas!
     w = width / cols;
     h = height / rows;
     //divides the width of the canvas by the num of cols and rows
     //making the 2d array (grid)
 
+    // Initialize both grids
     for (var i = 0; i < cols; i++) {
-        grid[i] = new Array(rows);
+        gridEfficient[i] = new Array(rows);
+        gridGreen[i] = new Array(rows);
     }
 
+    // Create spots for both grids
     for (var i = 0; i < cols; i++) {
         for (var j = 0; j < rows; j++) {
-            grid[i][j] = new Spot(i, j);
+            gridEfficient[i][j] = new Spot(i, j);
+            gridGreen[i][j] = new Spot(i, j);
         }
     }
 
+    // Add neighbours for both grids
     for (var i = 0; i < cols; i++) {
         for (var j = 0; j < rows; j++) {
-            grid[i][j].addNeighbours(grid);
+            gridEfficient[i][j].addNeighbours(gridEfficient);
+            gridGreen[i][j].addNeighbours(gridGreen);
         }
     }
 
-
-
-    //definding the start and end of the grid
-    //change this to change the start and end point
-    start = grid[146][47];
-    //x:1453.43 , y:640.14
-    end = grid[30][63];
-    //298.65 858.06
-
-
-    end.show('pink');
-
-    //adding in that the start and end can never be a wall!
+    //defining the start and end of the grid
+    start = gridEfficient[146][47];
+    end = gridEfficient[30][63];
+    
+    // Also set start/end for green grid
+    let startGreen = gridGreen[146][47];
+    let endGreen = gridGreen[30][63];
+    
     start.wall = false;
     end.wall = false;
+    startGreen.wall = false;
+    endGreen.wall = false;
 
-    //opening the set
-    //start searching at 0,0 and then add numbers to the end of the array i'm assuming this logic works until the end of the array?
-    openSet.push(start);
-
-
-
+    // Initialize both searches
+    openSetEfficient.push(start);
+    openSetGreen.push(startGreen);
 }
-
-
 
 function draw() {
     
-
-    var current;
-
-    if (openSet.length > 0) {
-
-        var winner = 0;
-        for (var i = 0; i < openSet.length; i++) {
-            if (openSet[i].f < openSet[winner].f) {
-                winner = i;
+    // Run efficient route A* (one step)
+    if (openSetEfficient.length > 0 && !solvedEfficient) {
+        runAStarStep(openSetEfficient, closedSetEfficient, gridEfficient, end, false);
+        
+        let current = openSetEfficient.length > 0 ? openSetEfficient[0] : null;
+        for (let i = 0; i < openSetEfficient.length; i++) {
+            if (openSetEfficient[i].f < current.f) {
+                current = openSetEfficient[i];
             }
         }
-
-        current = openSet[winner];
-
-        if (current === end) {
-            console.log("DONE!");
-            noLoop();
-
-        }
-
-
-
-        removeFromArray(openSet, current);
-        //function made at bottom of code
-        closedSet.push(current);
-
-        var neighbours = current.neighbours;
-        for (var i = 0; i < neighbours.length; i++) {
-            var neighbour = neighbours[i];
-
-            if (!closedSet.includes(neighbour) && !neighbour.wall) {
-                var moveCost = 1;
-                //adds a value onto the movements
-
-
-                //lowering weighting of park if checkbox checked
-                if (neighbour.park) {
-                     if (greenSpaceCheckBox.elt.checked) {
-                        moveCost = 0.1;
-                        console.log('lower cost');
-                    }
-                    else{
-                        console.log('high cost');
-                    }
         
+        if (current === end) {
+            solvedEfficient = true;
+            pathEfficient = reconstructPath(end);
+        }
+    }
 
-                }
+    // Run green route A* (one step)
+    if (openSetGreen.length > 0 && !solvedGreen) {
+        runAStarStep(openSetGreen, closedSetGreen, gridGreen, gridGreen[30][63], true);
+        
+        let current = openSetGreen.length > 0 ? openSetGreen[0] : null;
+        for (let i = 0; i < openSetGreen.length; i++) {
+            if (openSetGreen[i].f < current.f) {
+                current = openSetGreen[i];
+            }
+        }
+        
+        if (current === gridGreen[30][63]) {
+            solvedGreen = true;
+            pathGreen = reconstructPath(gridGreen[30][63]);
+        }
+    }
 
-                var tempG = current.g + moveCost;
-                var newPath = false;
+    // Stop when both are solved
+    if (solvedEfficient && solvedGreen) {
+        noLoop();
+    }
 
-                if (openSet.includes(neighbour)) {
-                    if (tempG < neighbour.g) {
-                        neighbour.g = tempG;
-                        newPath = true;
-                    }
-                } else {
+    // Draw the grid and visualization
+    drawVisualization();
+}
+
+function runAStarStep(openSet, closedSet, grid, end, isGreen) {
+    if (openSet.length === 0) return;
+
+    var winner = 0;
+    for (var i = 0; i < openSet.length; i++) {
+        if (openSet[i].f < openSet[winner].f) {
+            winner = i;
+        }
+    }
+
+    var current = openSet[winner];
+
+    removeFromArray(openSet, current);
+    closedSet.push(current);
+
+    var neighbours = current.neighbours;
+    for (var i = 0; i < neighbours.length; i++) {
+        var neighbour = neighbours[i];
+
+        if (!closedSet.includes(neighbour) && !neighbour.wall) {
+            var moveCost = 1;
+
+            // Green route prioritizes parks
+            if (isGreen && neighbour.park) {
+                moveCost = 0.1;
+            }
+
+            var tempG = current.g + moveCost;
+            var newPath = false;
+
+            if (openSet.includes(neighbour)) {
+                if (tempG < neighbour.g) {
                     neighbour.g = tempG;
                     newPath = true;
-                    openSet.push(neighbour);
                 }
+            } else {
+                neighbour.g = tempG;
+                newPath = true;
+                openSet.push(neighbour);
+            }
 
-                if (newPath) {
-                    neighbour.h = heuristic(neighbour, end);
-                    neighbour.f = neighbour.g + neighbour.h;
-                    neighbour.previous = current;
-                }
+            if (newPath) {
+                neighbour.h = heuristic(neighbour, end);
+                neighbour.f = neighbour.g + neighbour.h;
+                neighbour.previous = current;
             }
         }
-
-    } else {
-        console.log("no path!");
-        noSolution = true;
-        noLoop();
-        return;
     }
+}
 
-    // background(220);
-
-    for (var i = 0; i < cols; i++) {
-        for (var j = 0; j < rows; j++) {
-            grid[i][j].show();
-        }
-    }
-
-    for (var i = 0; i < closedSet.length; i++) {
-        closedSet[i].show(color(255, 0, 0));
-    }
-
-    for (var i = 0; i < openSet.length; i++) {
-        openSet[i].show(color(255, 91, 0));
-    }
-
-    path = [];
-    var temp = current;
+function reconstructPath(endNode) {
+    let path = [];
+    let temp = endNode;
     if (temp) {
         path.push(temp);
         while (temp.previous) {
@@ -214,10 +214,54 @@ function draw() {
             temp = temp.previous;
         }
     }
+    return path;
+}
 
-    for (var i = 0; i < path.length; i++) {
-        path[i].show(color(0, 0, 255));
+function drawVisualization() {
+    // Draw base grid
+    for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
+            gridEfficient[i][j].show();
+        }
     }
+
+    // Draw closed sets (evaluated nodes) - semi-transparent
+    for (var i = 0; i < closedSetEfficient.length; i++) {
+        push();
+        fill(255,0,0,50); // closed set color efficient route
+        strokeWeight(0);
+        rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
+        pop();
+    }
+
+    for (var i = 0; i < closedSetGreen.length; i++) {
+        push();
+        fill(0,0,255,50); // closed set color green route
+        strokeWeight(0);
+        rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
+        pop();
+    }
+
+    // Draw open sets (frontier nodes)
+    for (var i = 0; i < openSetEfficient.length; i++) {
+        openSetEfficient[i].show(color(255, 0, 0));
+    }
+
+    for (var i = 0; i < openSetGreen.length; i++) {
+        openSetGreen[i].show(color(0, 200, 0));
+    }
+
+    // Draw final paths with bold colors
+    strokeWeight(3);
+    for (var i = 0; i < pathEfficient.length; i++) {
+        pathEfficient[i].show(color(0, 0, 255)); // Blue for efficient
+    }
+
+    for (var i = 0; i < pathGreen.length; i++) {
+        pathGreen[i].show(color(255, 100, 200)); // Pink for green-space
+    }
+
+    // Draw labels
     textStyle(NORMAL);
     textAlign(CENTER);
     textSize(15);
@@ -230,15 +274,49 @@ function draw() {
     rect(298, 858, 200, 50);
     fill(255);
     text('NEW CROSS STATION', 298, 858);
-textSize(45);
-fill('magenta');
-textStyle(BOLD);
-    text('Green Space Priority', width/2, height-100);
+    
+    textSize(45);
+    fill('magenta');
+    textStyle(BOLD);
+    text('Dual Route Pathfinding', width/2, height-100);
+
+    // Draw route statistics
+    drawStats();
 }
 
+function drawStats() {
+    textSize(16);
+    textStyle(NORMAL);
+    textAlign(LEFT);
+    rectMode(CORNER);
+    
+    let statsX = 20;
+    let statsY = 20;
+    
+    // Efficient route info
+    fill(0, 0, 255);
+    text('Efficient Route (Blue)', statsX, statsY);
+    fill(0);
+    text('Distance: ' + pathEfficient.length + ' cells', statsX, statsY + 20);
+    let efficientGreen = countGreenSpacePath(pathEfficient);
+    text('Green Space: ' + efficientGreen + ' cells', statsX, statsY + 40);
+    
+    // Green-space route info
+    fill(255, 100, 200);
+    text('Green Space Route (Pink)', statsX, statsY + 80);
+    fill(0);
+    text('Distance: ' + pathGreen.length + ' cells', statsX, statsY + 100);
+    let greenRouteGreen = countGreenSpacePath(pathGreen);
+    text('Green Space: ' + greenRouteGreen + ' cells', statsX, statsY + 120);
+}
 
-
-//adding a constructor function so we change stuff along the way
+function countGreenSpacePath(path) {
+    let count = 0;
+    for (let i = 0; i < path.length; i++) {
+        if (path[i].park) count++;
+    }
+    return count;
+}
 
 function Spot(i, j) {
 
@@ -254,8 +332,6 @@ function Spot(i, j) {
     this.wall = false;
     this.park = false;
 
-
-
     let x = floor(i * w + w / 2);
     let y = floor(j * h + h / 2);
     //floor removes decimal points
@@ -267,14 +343,10 @@ function Spot(i, j) {
     let g = pixels[pixelIndex + 1];
     let b = pixels[pixelIndex + 2];
 
-    //doesnt use a for loop as there is already a loop happening when we make the new spots using a grid
-
     if (dist(r, g, b, grey[0], grey[1], grey[2]) < 30) {
         // PATH
-        console.log('path');
         this.wall = false;
         this.park = false;
-
     }
     else if (dist(r, g, b, green[0], green[1], green[2]) < 30) {
         // GREENSPACE
@@ -285,10 +357,6 @@ function Spot(i, j) {
         this.wall = true;
     }
 
-
-
-    //show function
-
     this.show = function (col) {
         let c = col;
         if (c) {
@@ -297,17 +365,15 @@ function Spot(i, j) {
         else if (this.wall) {
             c = color(0);
         } else if (this.park) {
-            c = color(0, 255, 0);
+            c = color(121, 212, 6);
         } else {
-            c = color(255);
+            c = color(180);
         }
 
         fill(c);
         strokeWeight(1);
         rect(this.i * w, this.j * h, w, h);
-    } //END spot function
-
-
+    }
 
     this.addNeighbours = function (grid) {
 
@@ -326,32 +392,19 @@ function Spot(i, j) {
         if (j > 0) {
             this.neighbours.push(grid[i][j - 1]);
         }
-
     }
-
-
-
 }
 
-
-
-
-//Function to remove a closedSet node from openSet array.
 function removeFromArray(arr, elt) {
     for (var i = arr.length - 1; i >= 0; i--) {
         if (arr[i] === elt) {
             arr.splice(i, 1);
         }
-
     }
 }
 
 function heuristic(a, b) {
-    //this is known as euclidiian distance uses pythag theorem
+    //this is known as euclidean distance uses pythag theorem
     var d = dist(a.i, a.j, b.i, b.j);
-    // //absolute distance version
-    // var d = abs(a.i - b.i) + abs(a.j-b.j);
     return d;
 }
-
-//this code is cooked. 
