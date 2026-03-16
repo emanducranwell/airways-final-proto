@@ -25,10 +25,10 @@ let pm =[];
 
 let numRows;
 
-let londonMinX = 525200;
-let londonMaxX = 533200;
-let londonMinY = 176000;
-let londonMaxY = 180500;
+let londonMinX = (525200)+250;
+let londonMaxX = (533200)+250;
+let londonMinY = (176000)+450;
+let londonMaxY = (180500)+450;
 
 //coordinates to access
 
@@ -223,11 +223,12 @@ function draw() {
         noFill();
         
         
-
-        square(x[i], y[i], 8);
+stroke('yellow');
+        square(x[i], y[i], width/8);
         // console.log('x', x[i],'y', y[i],'pm', pm[i]);
         
     }
+    stroke(0);
 }
 
 function runAStarStep(openSet, closedSet, grid, end, isGreen) {
