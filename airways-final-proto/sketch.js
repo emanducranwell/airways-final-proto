@@ -12,8 +12,8 @@
 
 //working
 
-var cols = 200;
-var rows = 100;
+var cols = 400;
+var rows = 300;
 var gridEfficient = new Array(cols);
 var gridGreen = new Array(cols);
 
@@ -38,8 +38,10 @@ var col;
 var col1; //colour
 var mapImg;
 
-let grey = [206, 216, 227];
-let green = [194, 240, 212];
+let grey = [207, 216, 221];
+let green = [191, 231, 209];
+let blue = [158, 214, 233];
+let darkGrey = [151,168,181];
 //the colours that google maps uses
 
 // let greenSpaceCheckBox;
@@ -51,7 +53,7 @@ async function setup() {
     // greenSpacePos = select('.switch');
     // greenSpacePos.position(2000, 2380);
 
-    mapImg = await loadImage('homeNewCross2.png');
+    mapImg = await loadImage('largeMap.png');
     //slightly edited screenshot to make sure all roads show
 
     createCanvas(mapImg.width, mapImg.height);
@@ -92,12 +94,12 @@ async function setup() {
     }
 
     //defining the start and end of the grid
-    start = gridEfficient[146][47];
-    end = gridEfficient[30][63];
+    start = gridEfficient[352][38];
+    end = gridEfficient[22][253];
     
     // Also set start/end for green grid
-    let startGreen = gridGreen[146][47];
-    let endGreen = gridGreen[30][63];
+    let startGreen = gridGreen[352][38];
+    let endGreen = gridGreen[22][253];
     
     start.wall = false;
     end.wall = false;
@@ -152,6 +154,8 @@ function draw() {
 
     // Draw the grid and visualization
     drawVisualization();
+    //start & end placement math
+    console.log(mouseX/w, mouseY/h);
 }
 
 function runAStarStep(openSet, closedSet, grid, end, isGreen) {
@@ -225,40 +229,40 @@ function drawVisualization() {
         }
     }
 
-    // Draw closed sets (evaluated nodes) - semi-transparent
-    for (var i = 0; i < closedSetEfficient.length; i++) {
-        push();
-        fill(255,0,0,50); // closed set color efficient route
-        strokeWeight(0);
-        rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
-        pop();
-    }
+    // // Draw closed sets (evaluated nodes) - semi-transparent
+    // for (var i = 0; i < closedSetEfficient.length; i++) {
+    //     push();
+    //     fill(255,0,0,50); // closed set color efficient route
+    //     strokeWeight(0);
+    //     rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
+    //     pop();
+    // }
 
-    for (var i = 0; i < closedSetGreen.length; i++) {
-        push();
-        fill(0,0,255,50); // closed set color green route
-        strokeWeight(0);
-        rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
-        pop();
-    }
+    // for (var i = 0; i < closedSetGreen.length; i++) {
+    //     push();
+    //     fill(0,0,255,50); // closed set color green route
+    //     strokeWeight(0);
+    //     rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
+    //     pop();
+    // }
 
     // Draw open sets (frontier nodes)
     for (var i = 0; i < openSetEfficient.length; i++) {
-        openSetEfficient[i].show(color(255, 0, 0));
+        openSetEfficient[i].show(color(0, 0, 255));
     }
 
     for (var i = 0; i < openSetGreen.length; i++) {
-        openSetGreen[i].show(color(0, 200, 0));
+        openSetGreen[i].show(color(202,219,53));
     }
 
     // Draw final paths with bold colors
     strokeWeight(3);
     for (var i = 0; i < pathEfficient.length; i++) {
-        pathEfficient[i].show(color(0, 0, 255)); // Blue for efficient
+        pathEfficient[i].show(color('magenta')); // Blue for efficient
     }
 
     for (var i = 0; i < pathGreen.length; i++) {
-        pathGreen[i].show(color(255, 100, 200)); // Pink for green-space
+        pathGreen[i].show(color(202,219,53)); // Pink for green-space
     }
 
     // Draw labels
@@ -266,19 +270,26 @@ function drawVisualization() {
     textAlign(CENTER);
     textSize(15);
     rectMode(CENTER);
-    fill('magenta');
-    square(1453, 640, 50);
-    fill(255);
-    text('HOME', 1453, 640);
-    fill('magenta');
-    rect(298, 858, 200, 50);
-    fill(255);
-    text('NEW CROSS STATION', 298, 858);
+    fill(218,121,39,200);
+    square(1357, 130, 70);
+    fill(0);
+    textStyle(BOLD);
+    text('START', 1357, 135);
+    fill(218,121,39,200);
+    square(106, 881, 70);
+    fill(0);
+    textStyle(BOLD);
+    text('END', 106, 881);
+
+    // console.log(mouseX,mouseY)
     
     textSize(45);
     fill('magenta');
     textStyle(BOLD);
-    text('Dual Route Pathfinding', width/2, height-100);
+    fill(0,0,0,200);
+    rect(width/2, height*0.08, width/2, height/12,999);
+    fill(218,121,39); //orange
+    text('AIRWAYS', width/2, height*0.1);
 
     // Draw route statistics
     drawStats();
@@ -331,6 +342,7 @@ function Spot(i, j) {
     this.previous = undefined;
     this.wall = false;
     this.park = false;
+    this.river = false;
 
     let x = floor(i * w + w / 2);
     let y = floor(j * h + h / 2);
@@ -343,15 +355,34 @@ function Spot(i, j) {
     let g = pixels[pixelIndex + 1];
     let b = pixels[pixelIndex + 2];
 
-    if (dist(r, g, b, grey[0], grey[1], grey[2]) < 30) {
-        // PATH
-        this.wall = false;
-        this.park = false;
-    }
-    else if (dist(r, g, b, green[0], green[1], green[2]) < 30) {
+    if (dist(r, g, b, green[0], green[1], green[2]) < 20) {
         // GREENSPACE
         this.wall = false;
         this.park = true;
+        this.river = false;
+        this.highway = false;
+    }
+    else if (dist(r, g, b, grey[0], grey[1], grey[2]) < 40) {
+        // PATH
+        this.wall = false;
+        this.park = false;
+        this.river = false;
+        this.highway = false;
+    }
+    else if (dist(r, g, b, blue[0], blue[1], blue[2]) < 20) {
+        // RIVER
+        this.river = true;
+        this.park = false;
+        this.wall = false;
+        this.highway = false;
+
+    }
+    else if (dist(r, g, b, darkGrey[0], darkGrey[1], darkGrey[2]) < 20) {
+        // HIGHWAY
+        this.river = false;
+        this.park = false;
+        this.wall = false;
+        this.highway = true;
     }
     else {
         this.wall = true;
@@ -365,7 +396,9 @@ function Spot(i, j) {
         else if (this.wall) {
             c = color(0);
         } else if (this.park) {
-            c = color(121, 212, 6);
+            c = color(186,253,143,100);
+        } else if (this.river) {
+            c = color(143,146,235,100);               
         } else {
             c = color(180);
         }
