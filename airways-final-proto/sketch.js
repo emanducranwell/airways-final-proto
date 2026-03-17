@@ -18,7 +18,7 @@ let pmVal;
 let xLng;
 let yLat;
 
-
+// arrays for x & y values of PM2.5 data points
 let x = [];
 let y =[];
 let pm =[];
@@ -35,6 +35,7 @@ let londonMaxY = (180500);
 var cols = 400;
 var rows = 300;
 var gridEfficient = new Array(cols);
+var gridPollution = new Array(cols);
 var gridGreen = new Array(cols);
 
 // Efficient route (standard A*)
@@ -133,21 +134,24 @@ async function setup() {
     for (var i = 0; i < cols; i++) {
         gridEfficient[i] = new Array(rows);
         gridGreen[i] = new Array(rows);
+        gridPollution[i] = new Array(rows);
     }
 
-    // Create spots for both grids
+    // Create spots for all grids
     for (var i = 0; i < cols; i++) {
         for (var j = 0; j < rows; j++) {
             gridEfficient[i][j] = new Spot(i, j);
             gridGreen[i][j] = new Spot(i, j);
+            gridPollution[i][j] = new Spot(i, j);
         }
     }
 
-    // Add neighbours for both grids
+    // Add neighbours for all grids
     for (var i = 0; i < cols; i++) {
         for (var j = 0; j < rows; j++) {
             gridEfficient[i][j].addNeighbours(gridEfficient);
             gridGreen[i][j].addNeighbours(gridGreen);
+            gridPollution[i][j].addNeighbours(gridPollution);
         }
     }
 
@@ -169,9 +173,13 @@ async function setup() {
     openSetGreen.push(startGreen);
 }
 
+
+
+//START DRAW
+
 function draw() {
-    
-    
+
+
     // Run efficient route A* (one step)
     if (openSetEfficient.length > 0 && !solvedEfficient) {
         runAStarStep(openSetEfficient, closedSetEfficient, gridEfficient, end, false);
@@ -213,31 +221,20 @@ function draw() {
 
     // Draw the grid and visualization
     drawVisualization();
-    //start & end placement math
-    console.log(mouseX/w, mouseY/h);
+    // Commented out - was covering all the paths and UI
+    // drawPollVisualization();
 
-
-    for(let i=0; i< x.length; i++){
-        // console.log(pm);
-     
-       
-        // pmCol = map(pm[i], 0, 15, 0, 1);
-        // pmCol = constrain(pmCol, 0, 1);
-        // let c = lerpColor(good, bad, pmCol);
+    // Draw pollution data points (yellow squares)
+    for(let i = 0; i < x.length; i++){
         noFill();
-        
-        
-stroke('yellow');
+        stroke('yellow');
+        strokeWeight(2);
         rectMode(CENTER);
         rect(x[i], y[i], width/8, width/8);
         rectMode(CORNER);
-        textSize(15);
-        text('pm:' && pm[i], x[i], y[i]);
-        text('x:' && x[i], x[i], y[i]+15);
-        text('y:' && y[i], x[i], y[i]+30);
-        console.log('x1:', xLng[1], 'y1:', yLat[1]);
-        // console.log('x', x[i],'y', y[i],'pm', pm[i]);
-        
+        textSize(12);
+        fill('yellow');
+        text('PM:' + pm[i].toFixed(2), x[i], y[i] - 20);
     }
     stroke(0);
 }
@@ -264,9 +261,23 @@ function runAStarStep(openSet, closedSet, grid, end, isGreen) {
         if (!closedSet.includes(neighbour) && !neighbour.wall) {
             var moveCost = 1;
 
-            // Green route prioritizes parks
-            if (isGreen && neighbour.park) {
-                moveCost = 0.1;
+            // Get the pollution level for this neighbor cell
+            let pollutionLevel = neighbour.pollutionLevel;
+
+            if (isGreen) {
+                // GREEN ROUTE: Prioritize both parks AND low pollution
+                if (neighbour.park) {
+                    moveCost = 0.1; // Parks are very cheap
+                } else if (pollutionLevel <= 0.9) {
+                    moveCost = 0.2; // Low pollution areas are cheap
+                } else if (pollutionLevel <= 1.0) {
+                    moveCost = 0.4; // Medium pollution is moderate
+                } else {
+                    moveCost = 0.6; // High pollution is expensive
+                }
+            } else {
+                // EFFICIENT ROUTE: Ignore pollution, just find shortest path
+                moveCost = 1; // All cells cost the same
             }
 
             var tempG = current.g + moveCost;
@@ -313,22 +324,22 @@ function drawVisualization() {
         }
     }
 
-    // // Draw closed sets (evaluated nodes) - semi-transparent
-    // for (var i = 0; i < closedSetEfficient.length; i++) {
-    //     push();
-    //     fill(255,0,0,50); // closed set color efficient route
-    //     strokeWeight(0);
-    //     rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
-    //     pop();
-    // }
+    // Draw closed sets (evaluated nodes) - semi-transparent
+    for (var i = 0; i < closedSetEfficient.length; i++) {
+        push();
+        fill(255); // closed set color efficient route
+        strokeWeight(0);
+        rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
+        pop();
+    }
 
-    // for (var i = 0; i < closedSetGreen.length; i++) {
-    //     push();
-    //     fill(0,0,255,50); // closed set color green route
-    //     strokeWeight(0);
-    //     rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
-    //     pop();
-    // }
+    for (var i = 0; i < closedSetGreen.length; i++) {
+        push();
+        fill(0); // closed set color green route
+        strokeWeight(0);
+        rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
+        pop();
+    }
 
     // Draw open sets (frontier nodes)
     for (var i = 0; i < openSetEfficient.length; i++) {
@@ -413,6 +424,35 @@ function countGreenSpacePath(path) {
     return count;
 }
 
+function removeFromArray(arr, elt) {
+    for (var i = arr.length - 1; i >= 0; i--) {
+        if (arr[i] === elt) {
+            arr.splice(i, 1);
+        }
+    }
+}
+
+function heuristic(a, b) {
+    //this is known as euclidean distance uses pythag theorem
+    var d = dist(a.i, a.j, b.i, b.j);
+    return d;
+}
+
+function getInterpolatedPollution(gridI, gridJ) {
+    let totalPM = 0;
+    let totalWeight = 0;
+    
+    for (let i = 0; i < x.length; i++) {
+        let d = dist(gridI * w, gridJ * h, x[i], y[i]);
+        if (d === 0) return pm[i]; // Exact match
+        
+        let weight = 1 / (d * d); // Inverse distance squared
+        totalPM += pm[i] * weight;
+        totalWeight += weight;
+    }
+    return totalPM / totalWeight;
+}
+
 function Spot(i, j) {
 
     this.i = i;
@@ -427,6 +467,7 @@ function Spot(i, j) {
     this.wall = false;
     this.park = false;
     this.river = false;
+    this.pollutionLevel = getInterpolatedPollution(i, j); // Calculate pollution for this cell
 
     let x = floor(i * w + w / 2);
     let y = floor(j * h + h / 2);
@@ -512,16 +553,11 @@ function Spot(i, j) {
     }
 }
 
-function removeFromArray(arr, elt) {
-    for (var i = arr.length - 1; i >= 0; i--) {
-        if (arr[i] === elt) {
-            arr.splice(i, 1);
+function drawPollVisualization() {
+    // Draw base pollution grid
+    for (var i = 0; i < cols; i++) {
+        for (var j = 0; j < rows; j++) {
+            gridPollution[i][j].show();
         }
     }
-}
-
-function heuristic(a, b) {
-    //this is known as euclidean distance uses pythag theorem
-    var d = dist(a.i, a.j, b.i, b.j);
-    return d;
 }
