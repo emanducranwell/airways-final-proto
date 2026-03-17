@@ -25,10 +25,10 @@ let pm =[];
 
 let numRows;
 
-let londonMinX = (525200)+250;
-let londonMaxX = (533200)+250;
-let londonMinY = (176000)+450;
-let londonMaxY = (180500)+450;
+let londonMinX = (525200);
+let londonMaxX = (533200);
+let londonMinY = (176000);
+let londonMaxY = (180500);
 
 //coordinates to access
 
@@ -117,13 +117,16 @@ async function setup() {
         let yVal = int(yLat[i]);
         let pmValNo = Number(pmVal[i]);
         //turns from string to number
-      
+    
+    //grid for pollution data points    
       if (xVal > londonMinX && xVal < londonMaxX &&
             yVal > londonMinY && yVal < londonMaxY) {
       
-            x.push(map(xVal, londonMinX, londonMaxX, 0, width));
-            y.push(map(yVal, londonMinY, londonMaxY, height, 0));
+            x.push(map(xVal, londonMinX, londonMaxX, 0, (width)+ width/16));
+            y.push(map(yVal, londonMinY, londonMaxY, (height)+ width/16, 0));
             pm.push(pmValNo);
+            console.log('x:', x);
+
         }
     }
 
@@ -167,6 +170,7 @@ async function setup() {
 }
 
 function draw() {
+    
     
     // Run efficient route A* (one step)
     if (openSetEfficient.length > 0 && !solvedEfficient) {
@@ -224,7 +228,14 @@ function draw() {
         
         
 stroke('yellow');
-        square(x[i], y[i], width/8);
+        rectMode(CENTER);
+        rect(x[i], y[i], width/8, width/8);
+        rectMode(CORNER);
+        textSize(15);
+        text('pm:' && pm[i], x[i], y[i]);
+        text('x:' && x[i], x[i], y[i]+15);
+        text('y:' && y[i], x[i], y[i]+30);
+        console.log('x1:', xLng[1], 'y1:', yLat[1]);
         // console.log('x', x[i],'y', y[i],'pm', pm[i]);
         
     }
