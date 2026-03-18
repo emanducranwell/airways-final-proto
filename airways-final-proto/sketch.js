@@ -40,12 +40,14 @@ var gridGreen = new Array(cols);
 
 // Efficient route (standard A*)
 var openSetEfficient = [];
+var openSetEfficientSet = new Set(); // Add Set for O(1) lookup
 var closedSetEfficient = [];
 var pathEfficient = [];
 var solvedEfficient = false;
 
 // Green-space prioritized route
 var openSetGreen = [];
+var openSetGreenSet = new Set(); // Add Set for O(1) lookup
 var closedSetGreen = [];
 var pathGreen = [];
 var solvedGreen = false;
@@ -182,7 +184,7 @@ function draw() {
 
     // Run efficient route A* (one step)
     if (openSetEfficient.length > 0 && !solvedEfficient) {
-        runAStarStep(openSetEfficient, closedSetEfficient, gridEfficient, end, false);
+        runAStarStep(openSetEfficient, openSetEfficientSet, closedSetEfficient, gridEfficient, end, false);
         
         let current = openSetEfficient.length > 0 ? openSetEfficient[0] : null;
         for (let i = 0; i < openSetEfficient.length; i++) {
@@ -199,7 +201,7 @@ function draw() {
 
     // Run green route A* (one step)
     if (openSetGreen.length > 0 && !solvedGreen) {
-        runAStarStep(openSetGreen, closedSetGreen, gridGreen, gridGreen[30][63], true);
+        runAStarStep(openSetGreen, openSetGreenSet, closedSetGreen, gridGreen, gridGreen[30][63], true);
         
         let current = openSetGreen.length > 0 ? openSetGreen[0] : null;
         for (let i = 0; i < openSetGreen.length; i++) {
@@ -239,9 +241,10 @@ function draw() {
     stroke(0);
 }
 
-function runAStarStep(openSet, closedSet, grid, end, isGreen) {
+function runAStarStep(openSet, openSetSet, closedSet, grid, end, isGreen) {
     if (openSet.length === 0) return;
 
+    // Find node with lowest f score (single pass)
     var winner = 0;
     for (var i = 0; i < openSet.length; i++) {
         if (openSet[i].f < openSet[winner].f) {
@@ -250,8 +253,8 @@ function runAStarStep(openSet, closedSet, grid, end, isGreen) {
     }
 
     var current = openSet[winner];
-
     removeFromArray(openSet, current);
+    openSetSet.delete(current); // Remove from Set too
     closedSet.push(current);
 
     var neighbours = current.neighbours;
@@ -283,7 +286,8 @@ function runAStarStep(openSet, closedSet, grid, end, isGreen) {
             var tempG = current.g + moveCost;
             var newPath = false;
 
-            if (openSet.includes(neighbour)) {
+            // Use Set for O(1) lookup instead of array includes()
+            if (openSetSet.has(neighbour)) {
                 if (tempG < neighbour.g) {
                     neighbour.g = tempG;
                     newPath = true;
@@ -292,6 +296,7 @@ function runAStarStep(openSet, closedSet, grid, end, isGreen) {
                 neighbour.g = tempG;
                 newPath = true;
                 openSet.push(neighbour);
+                openSetSet.add(neighbour); // Add to Set
             }
 
             if (newPath) {
@@ -439,18 +444,20 @@ function heuristic(a, b) {
 }
 
 function getInterpolatedPollution(gridI, gridJ) {
-    let totalPM = 0;
-    let totalWeight = 0;
+    // Use nearest neighbor instead of distance-weighted for speed
+    // This is much faster and still gives reasonable results
+    let closestDist = Infinity;
+    let closestPM = 0.9; // Default value if no data points nearby
     
     for (let i = 0; i < x.length; i++) {
         let d = dist(gridI * w, gridJ * h, x[i], y[i]);
-        if (d === 0) return pm[i]; // Exact match
-        
-        let weight = 1 / (d * d); // Inverse distance squared
-        totalPM += pm[i] * weight;
-        totalWeight += weight;
+        if (d < closestDist) {
+            closestDist = d;
+            closestPM = pm[i];
+            if (d === 0) break; // Exact match found, no need to continue
+        }
     }
-    return totalPM / totalWeight;
+    return closestPM;
 }
 
 function Spot(i, j) {
