@@ -54,6 +54,8 @@ var solvedGreen = false;
 
 var start;
 var end;
+var startGreen;
+var endGreen;
 var noSolution = false;
 
 var w, h;
@@ -161,9 +163,9 @@ async function setup() {
     start = gridEfficient[352][38];
     end = gridEfficient[22][253];
     
-    // Also set start/end for green grid
-    let startGreen = gridGreen[352][38];
-    let endGreen = gridGreen[22][253];
+    // Also set start/end for green grid (SAME endpoints)
+    startGreen = gridGreen[352][38];
+    endGreen = gridGreen[22][253]; // Changed from gridGreen[30][63]
     
     start.wall = false;
     end.wall = false;
@@ -180,51 +182,58 @@ async function setup() {
 //START DRAW
 
 function draw() {
-
-
-    // Run efficient route A* (one step)
-    if (openSetEfficient.length > 0 && !solvedEfficient) {
-        runAStarStep(openSetEfficient, openSetEfficientSet, closedSetEfficient, gridEfficient, end, false);
-        
-        let current = openSetEfficient.length > 0 ? openSetEfficient[0] : null;
-        for (let i = 0; i < openSetEfficient.length; i++) {
-            if (openSetEfficient[i].f < current.f) {
-                current = openSetEfficient[i];
+    
+    // Run multiple A* steps per frame for faster completion
+    const stepsPerFrame = 200; // Increase this to go faster
+    
+    for (let step = 0; step < stepsPerFrame; step++) {
+        // Run efficient route A* (one step)
+        if (openSetEfficient.length > 0 && !solvedEfficient) {
+            runAStarStep(openSetEfficient, openSetEfficientSet, closedSetEfficient, gridEfficient, end, false);
+            
+            let current = openSetEfficient.length > 0 ? openSetEfficient[0] : null;
+            for (let i = 0; i < openSetEfficient.length; i++) {
+                if (openSetEfficient[i].f < current.f) {
+                    current = openSetEfficient[i];
+                }
+            }
+            
+            if (current === end) {
+                solvedEfficient = true;
+                pathEfficient = reconstructPath(end);
             }
         }
-        
-        if (current === end) {
-            solvedEfficient = true;
-            pathEfficient = reconstructPath(end);
+
+        // Run green route A* (one step)
+        if (openSetGreen.length > 0 && !solvedGreen) {
+            runAStarStep(openSetGreen, openSetGreenSet, closedSetGreen, gridGreen, endGreen, true);
+            
+            let current = openSetGreen.length > 0 ? openSetGreen[0] : null;
+            for (let i = 0; i < openSetGreen.length; i++) {
+                if (openSetGreen[i].f < current.f) {
+                    current = openSetGreen[i];
+                }
+            }
+            
+            if (current === endGreen) {
+                solvedGreen = true;
+                pathGreen = reconstructPath(endGreen);
+            }
+        }
+
+        // Stop when both are solved
+        if (solvedEfficient && solvedGreen) {
+            break; // Exit the step loop early
         }
     }
 
-    // Run green route A* (one step)
-    if (openSetGreen.length > 0 && !solvedGreen) {
-        runAStarStep(openSetGreen, openSetGreenSet, closedSetGreen, gridGreen, gridGreen[30][63], true);
-        
-        let current = openSetGreen.length > 0 ? openSetGreen[0] : null;
-        for (let i = 0; i < openSetGreen.length; i++) {
-            if (openSetGreen[i].f < current.f) {
-                current = openSetGreen[i];
-            }
-        }
-        
-        if (current === gridGreen[30][63]) {
-            solvedGreen = true;
-            pathGreen = reconstructPath(gridGreen[30][63]);
-        }
-    }
-
-    // Stop when both are solved
+    // Stop animation when both are solved
     if (solvedEfficient && solvedGreen) {
         noLoop();
     }
 
     // Draw the grid and visualization
     drawVisualization();
-    // Commented out - was covering all the paths and UI
-    // drawPollVisualization();
 
     // Draw pollution data points (yellow squares)
     for(let i = 0; i < x.length; i++){
@@ -330,21 +339,21 @@ function drawVisualization() {
     }
 
     // Draw closed sets (evaluated nodes) - semi-transparent
-    for (var i = 0; i < closedSetEfficient.length; i++) {
-        push();
-        fill(255); // closed set color efficient route
-        strokeWeight(0);
-        rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
-        pop();
-    }
+    // for (var i = 0; i < closedSetEfficient.length; i++) {
+    //     push();
+    //     fill(255); // closed set color efficient route
+    //     strokeWeight(0);
+    //     rect(closedSetEfficient[i].i * w, closedSetEfficient[i].j * h, w, h);
+    //     pop();
+    // }
 
-    for (var i = 0; i < closedSetGreen.length; i++) {
-        push();
-        fill(0); // closed set color green route
-        strokeWeight(0);
-        rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
-        pop();
-    }
+    // for (var i = 0; i < closedSetGreen.length; i++) {
+    //     push();
+    //     fill('yellow'); // closed set color green route
+    //     strokeWeight(0,0,0,100);
+    //     rect(closedSetGreen[i].i * w, closedSetGreen[i].j * h, w, h);
+    //     pop();
+    // }
 
     // Draw open sets (frontier nodes)
     for (var i = 0; i < openSetEfficient.length; i++) {
