@@ -160,11 +160,11 @@ async function setup() {
     }
 
     //defining the start and end of the grid
-    start = gridEfficient[352][38];
+    start = gridEfficient[167][19];
     end = gridEfficient[22][253];
     
     // Also set start/end for green grid (SAME endpoints)
-    startGreen = gridGreen[352][38];
+    startGreen = gridGreen[167][19];
     endGreen = gridGreen[22][253]; // Changed from gridGreen[30][63]
     
     start.wall = false;
@@ -235,19 +235,19 @@ function draw() {
     // Draw the grid and visualization
     drawVisualization();
 
-    // Draw pollution data points (yellow squares)
-    for(let i = 0; i < x.length; i++){
-        noFill();
-        stroke('yellow');
-        strokeWeight(2);
-        rectMode(CENTER);
-        rect(x[i], y[i], width/8, width/8);
-        rectMode(CORNER);
-        textSize(12);
-        fill('yellow');
-        text('PM:' + pm[i].toFixed(2), x[i], y[i] - 20);
-    }
-    stroke(0);
+    // // Draw pollution data points (yellow squares)
+    // for(let i = 0; i < x.length; i++){
+    //     noFill();
+    //     stroke('yellow');
+    //     strokeWeight(2);
+    //     rectMode(CENTER);
+    //     rect(x[i], y[i], width/8, width/8);
+    //     rectMode(CORNER);
+    //     textSize(12);
+    //     fill('yellow');
+    //     text('PM:' + pm[i].toFixed(2), x[i], y[i] - 20);
+    // }
+    // stroke(0);
 }
 
 function runAStarStep(openSet, openSetSet, closedSet, grid, end, isGreen) {
@@ -289,7 +289,7 @@ function runAStarStep(openSet, openSetSet, closedSet, grid, end, isGreen) {
                 }
             } else {
                 // EFFICIENT ROUTE: Ignore pollution, just find shortest path
-                moveCost = 1; // All cells cost the same
+                moveCost = 0.8; // All cells cost the same
             }
 
             var tempG = current.g + moveCost;
@@ -356,22 +356,26 @@ function drawVisualization() {
     // }
 
     // Draw open sets (frontier nodes)
-    for (var i = 0; i < openSetEfficient.length; i++) {
-        openSetEfficient[i].show(color(0, 0, 255));
+    if (!solvedEfficient) {
+        for (var i = 0; i < openSetEfficient.length; i++) {
+            openSetEfficient[i].show(color(0, 0, 255));
+        }
     }
 
-    for (var i = 0; i < openSetGreen.length; i++) {
-        openSetGreen[i].show(color(255, 0, 255));
+    if (!solvedGreen) {
+        for (var i = 0; i < openSetGreen.length; i++) {
+            openSetGreen[i].show(color(255, 0, 255));
+        }
     }
 
     // Draw final paths with bold colors
     strokeWeight(3);
     for (var i = 0; i < pathEfficient.length; i++) {
-        pathEfficient[i].show(color(0,0,255)); // Blue for efficient
+        pathEfficient[i].show(color('orange')); // Blue for efficient
     }
 
     for (var i = 0; i < pathGreen.length; i++) {
-        pathGreen[i].show(color(202,219,53)); // Pink for green-space
+        pathGreen[i].show(color('yellow')); // Lime Green for green-space
     }
 
     // Draw labels
@@ -380,25 +384,25 @@ function drawVisualization() {
     textSize(15);
     rectMode(CENTER);
     fill(218,121,39,200);
-    square(1357, 130, 70);
+    square(646, 74, 70);
     fill(0);
     textStyle(BOLD);
-    text('START', 1357, 135);
+    text('START', 646, 74);
     fill(218,121,39,200);
     square(106, 881, 70);
     fill(0);
     textStyle(BOLD);
     text('END', 106, 881);
 
-    // console.log(mouseX,mouseY)
+    console.log(mouseX,mouseY);
     
     textSize(45);
     fill('magenta');
     textStyle(BOLD);
-    fill(0,0,0,200);
-    rect(width/2, height*0.08, width/2, height/12,999);
-    fill(218,121,39); //orange
-    text('AIRWAYS', width/2, height*0.1);
+    // fill(0,0,0,150);
+    // rect(width/2, height*0.08, width/2, height/12,999);
+    // fill(218,121,39); //orange
+    // text('AIRWAYS', width/2, height*0.1);
 
     // Draw route statistics
     drawStats();
@@ -423,7 +427,7 @@ function drawStats() {
     
     // Green-space route info
     fill(255, 100, 200);
-    text('Green Space Route (Pink)', statsX, statsY + 80);
+    text('Green Space Route (Lime Green)', statsX, statsY + 80);
     fill(0);
     text('Distance: ' + pathGreen.length + ' cells', statsX, statsY + 100);
     let greenRouteGreen = countGreenSpacePath(pathGreen);
@@ -577,3 +581,7 @@ function drawPollVisualization() {
         }
     }
 }
+
+
+
+
